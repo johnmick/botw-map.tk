@@ -21,6 +21,10 @@ class CreateSlateUserHandler(tornado.web.RequestHandler):
 
 class LoginHandler(tornado.web.RequestHandler):
   def post(self):
+    if self.get_secure_cookie("username"):
+      self.write("Welcome back: %s" % str(self.get_secure_cookie("username")))
+      return
+
     try:
       username = self.get_argument("username")
       password = self.get_argument("password")
@@ -33,9 +37,18 @@ class LoginHandler(tornado.web.RequestHandler):
       return
 
     if argon2.verify(password, user_hashes[username]):
-      self.write("Login successful")
+      self.write("Login by password successful")
+      self.set_secure_cookie("username", username)
     else:
-      self.write("Invalid successful")
+      self.write("Invalid password")
+
+class LogoutHandler(tornado.web.RequestHandler):
+  def post(self):
+    print("Logout called")
+    if self.get_secure_cookie("username"):
+      self.clear_cookie("username")
+      self.write("Cookie Cleared")
+      return
 
 if __name__ == "__main__":
     port_number = 8889
@@ -43,8 +56,9 @@ if __name__ == "__main__":
 
     app = tornado.web.Application([
         (r"/auth/create-slate-user", CreateSlateUserHandler),
-        (r"/auth/login",             LoginHandler)
-    ])
+        (r"/auth/login",             LoginHandler),
+        (r"/auth/logout",            LogoutHandler)
+    ], cookie_secret="TODO_Secret Cookies_TODO")
     app.listen(port_number, address=address)
     print("Listening for user auth requests on %s:%d" % (address,port_number))
     tornado.ioloop.IOLoop.current().start()
